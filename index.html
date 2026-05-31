@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentos Judiciales — Fuero Comercial</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="6" fill="#1a1a2e"/>
+          <path d="M7 8h14M7 12h10M7 16h12M7 20h8" stroke="#e8d5a3" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>DocJudicial</span>
+      </div>
+      <nav>
+        <button class="nav-item active" data-tipo="mandamiento">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Mandamiento
+        </button>
+        <button class="nav-item" data-tipo="oficio">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          Oficio
+        </button>
+        <button class="nav-item" data-tipo="escrito">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Escrito procesal
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <span>Fuero Comercial de la Nación</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title" id="topbar-title">Mandamiento</div>
+        <div class="tabs">
+          <button class="tab active" id="tab-pdf" onclick="setMode('pdf')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Desde PDF
+          </button>
+          <button class="tab" id="tab-manual" onclick="setMode('manual')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Manual
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+
+        <!-- ══ PANEL PDF ══ -->
+        <div id="panel-pdf">
+          <section class="card">
+            <h2>Resolución judicial</h2>
+            <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
+              <input type="file" id="file-input" accept=".pdf" onchange="handleFile(event)" style="display:none">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6M9 15l3-3 3 3"/></svg>
+              <p>Adjuntá la resolución en PDF</p>
+              <span>La IA extraerá expediente, partes, montos y juzgado</span>
+            </div>
+            <div id="file-loaded" style="display:none" class="file-pill">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span id="file-name"></span>
+              <button onclick="clearFile()">✕</button>
+            </div>
+            <button class="btn-extract" id="btn-extract" onclick="extractFromPDF()" disabled>
+              <span class="spinner" id="spin-extract"></span>
+              <svg id="icon-extract" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Extraer datos con IA
+            </button>
+            <p class="status-msg" id="status-extract"></p>
+          </section>
+        </div>
+
+        <!-- ══ PANEL MANUAL ══ -->
+        <div id="panel-manual" style="display:none">
+          <section class="card" id="manual-card">
+            <h2>Datos del documento</h2>
+            <div id="manual-fields"></div>
+          </section>
+        </div>
+
+        <!-- ══ CAMPOS EXTRAÍDOS ══ -->
+        <section class="card" id="fields-section" style="display:none">
+          <div class="card-header">
+            <h2>Datos del documento</h2>
+            <span class="badge badge-ai" id="source-badge">✦ Extraído por IA</span>
+          </div>
+          <div id="fields-container"></div>
+        </section>
+
+        <!-- ══ CLÁUSULAS ══ -->
+        <section class="card" id="clausulas-section" style="display:none">
+          <h2>Cláusulas y apercibimientos</h2>
+          <div class="checklist" id="clausulas-container"></div>
+        </section>
+
+        <!-- ══ AUTORIZADOS ══ -->
+        <section class="card" id="autorizados-section" style="display:none">
+          <h2>Autorizados a diligenciar</h2>
+          <div class="field">
+            <label>Nombres (uno por línea)</label>
+            <textarea id="autorizados" rows="4" placeholder="Dr. Mauricio Luparia&#10;Dra. Maximina Luparia&#10;Pablo Rodrigo Gomez"></textarea>
+          </div>
+        </section>
+
+        <!-- ══ INSTRUCCIONES ══ -->
+        <section class="card" id="instrucciones-section" style="display:none">
+          <h2>Instrucciones adicionales <small>— opcional</small></h2>
+          <div class="field">
+            <textarea id="instrucciones" rows="3" placeholder="Ej: incluir referencia al art. 147 LCT, mencionar comunicación DEOX por secretaría…"></textarea>
+          </div>
+        </section>
+
+        <!-- ══ BOTÓN GENERAR ══ -->
+        <button class="btn-generate" id="btn-generate" onclick="generateDoc()" style="display:none">
+          <span class="spinner" id="spin-generate"></span>
+          <svg id="icon-generate" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          Generar documento
+        </button>
+        <p class="status-msg" id="status-generate"></p>
+
+        <!-- ══ RESULTADO ══ -->
+        <section id="result-section" style="display:none">
+          <div class="result-header">
+            <span class="result-label" id="result-label">Documento generado</span>
+            <div class="result-actions">
+              <button class="btn-action" onclick="copyResult()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copiar
+              </button>
+              <button class="btn-action" onclick="printResult()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Imprimir
+              </button>
+              <button class="btn-action" onclick="resetResult()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Nuevo
+              </button>
+            </div>
+          </div>
+          <pre class="result-box" id="result-text"></pre>
+        </section>
+
+      </div><!-- /content -->
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

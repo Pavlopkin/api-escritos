@@ -11,11 +11,9 @@ let pdfBase64    = null;
 // ═══════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Vincular nav lateral
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => setTipo(btn.dataset.tipo));
   });
-  // Drag & drop sobre la zona
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--gold)'; });
   dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; });
@@ -74,7 +72,6 @@ function buildField(f, prefix, prefill) {
         ${f.options.map(o => `<option${o === (prefill && prefill[f.id]) ? ' selected' : ''}>${o}</option>`).join('')}
       </select>`;
   } else {
-    // Usa textarea para campos de texto largo
     const isLong = ['capital_letras','intereses_letras','expediente','hecho','pretension','objeto'].includes(f.id);
     if (isLong) {
       wrapper.innerHTML = `
@@ -114,14 +111,12 @@ function renderExtractedFields(data) {
 }
 
 function showBottomSections(prefill) {
-  // Cláusulas
   document.getElementById('clausulas-section').style.display = 'block';
   const cc = document.getElementById('clausulas-container');
   cc.innerHTML = '';
   CLAUSULAS[currentTipo].forEach(c => {
     const label = document.createElement('label');
     label.className = 'check-item';
-    // Si los datos extraídos traen el estado de la cláusula, lo usamos
     const isChecked = (prefill && prefill[c.id] !== undefined) ? Boolean(prefill[c.id]) : c.checked;
     label.innerHTML = `
       <input type="checkbox" id="${c.id}" ${isChecked ? 'checked' : ''}>
@@ -129,13 +124,11 @@ function showBottomSections(prefill) {
     cc.appendChild(label);
   });
 
-  // Autorizados
   document.getElementById('autorizados-section').style.display = 'block';
   if (prefill && prefill.autorizados) {
     document.getElementById('autorizados').value = prefill.autorizados;
   }
 
-  // Instrucciones y botón generar
   document.getElementById('instrucciones-section').style.display = 'block';
   document.getElementById('btn-generate').style.display = 'flex';
 }
@@ -237,14 +230,12 @@ Devolvé un único objeto JSON plano con todas esas claves. Si un dato no figura
 async function generateDoc() {
   const prefix = currentMode === 'pdf' ? 'ef-' : 'mf-';
 
-  // Leer campos
   const fieldData = {};
   FIELDS[currentTipo].forEach(f => {
     const el = document.getElementById(prefix + f.id);
     if (el) fieldData[f.id] = el.value.trim();
   });
 
-  // Leer cláusulas activas
   const clausulasActivas = CLAUSULAS[currentTipo]
     .filter(c => document.getElementById(c.id)?.checked)
     .map(c => `• ${c.label}`);
@@ -252,7 +243,6 @@ async function generateDoc() {
   const autorizados    = document.getElementById('autorizados')?.value?.trim() || '';
   const instrucciones  = document.getElementById('instrucciones')?.value?.trim() || '';
 
-  // Armar resumen de datos para el prompt
   const datosStr = FIELDS[currentTipo]
     .filter(f => fieldData[f.id])
     .map(f => `${f.label}: ${fieldData[f.id]}`)
@@ -300,7 +290,6 @@ INSTRUCCIONES DE FORMATO:
     document.getElementById('result-label').textContent = tipoLabel;
     setStatus('generate', '');
 
-    // Scroll al resultado
     setTimeout(() => {
       document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -314,51 +303,65 @@ INSTRUCCIONES DE FORMATO:
 }
 
 // ═══════════════════════════════════════
-// CLIENTE API ANTHROPIC
+// CLIENTE API — PROXY EN PRODUCCIÓN
 // ═══════════════════════════════════════
 
 async function callAPI({ system, messages }) {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('No se encontró la API key. Verificá config.js');
+  // Detectar si estamos en Vercel (producción) o local
+  const isLocal = window.location.protocol === 'file:' ||
+                  window.location.hostname === 'localhost' ||
+                  window.location.hostname === '127.0.0.1';
 
-  const body = {
-    model:      'claude-sonnet-4-20250514',
-    max_tokens: 2000,
-    messages,
-  };
-  if (system) body.system = system;
+  if (isLocal) {
+    // ── Modo local: llamada directa con la key de config.js ──
+    const apiKey = (typeof ANTHROPIC_API_KEY !== 'undefined' && ANTHROPIC_API_KEY)
+      ? ANTHROPIC_API_KEY
+      : sessionStorage.getItem('anthropic_api_key');
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type':         'application/json',
-      'x-api-key':            apiKey,
-      'anthropic-version':    '2023-06-01',
-      // Solo para uso local / Electron. En producción web la key
-      // debe ir en un backend propio (ver README).
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify(body),
-  });
+    if (!apiKey) {
+      const key = prompt('Ingresá tu Anthropic API key:\n(solo se guarda en esta sesión del navegador)');
+      if (!key) throw new Error('API key requerida');
+      sessionStorage.setItem('anthropic_api_key', key.trim());
+      return callAPI({ system, messages }); // reintentar
+    }
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+    const body = { model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages };
+    if (system) body.system = system;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+    }
+    return resp.json();
+
+  } else {
+    // ── Modo producción: llamada al proxy de Vercel ──
+    const body = { model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages };
+    if (system) body.system = system;
+
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+    }
+    return resp.json();
   }
-
-  return resp.json();
-}
-
-function getApiKey() {
-  // 1. Variable definida en config.js (uso local)
-  if (typeof ANTHROPIC_API_KEY !== 'undefined' && ANTHROPIC_API_KEY) return ANTHROPIC_API_KEY;
-  // 2. Fallback: pregunta al usuario y lo guarda en sessionStorage
-  let key = sessionStorage.getItem('anthropic_api_key');
-  if (!key) {
-    key = prompt('Ingresá tu Anthropic API key:\n(solo se guarda en esta sesión del navegador)');
-    if (key) sessionStorage.setItem('anthropic_api_key', key.trim());
-  }
-  return key ? key.trim() : null;
 }
 
 // ═══════════════════════════════════════
